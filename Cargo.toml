@@ -1,0 +1,11 @@
+[package]
+name = "keylogger-rs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+input = "0.9.1"
+libc = "0.2.178"
+signal-hook = "0.3.18"
+sqlite = "0.37.0"
+xdg = "3.0.0"
