@@ -13,6 +13,8 @@ use std::time::Duration;
 use sqlite::{OpenFlags, Value, State};
 use std::time::{SystemTime, UNIX_EPOCH};
 use xdg::BaseDirectories;
+use std::os::fd::AsFd;
+use nix::poll::{poll, PollFlags, PollFd, PollTimeout};
 
 struct Interface;
 
@@ -129,7 +131,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let input_handle = thread::spawn(move || {
         let mut input = Libinput::new_with_udev(Interface);
         input.udev_assign_seat("seat0").unwrap();
-        loop {
+
+        while poll(&mut [PollFd::new(input.as_fd(), PollFlags::POLLIN)], PollTimeout::NONE).is_ok() {
             input.dispatch().unwrap();
             for event in &mut input {
                 if let Event::Keyboard(event) = event {
