@@ -79,10 +79,10 @@ CREATE TABLE IF NOT EXISTS keylogs (
     }
 
     fn save(&mut self) -> Result<(), Box<dyn Error>> {
-        println!("Saving {} records", self.buf.len());
         if self.buf.is_empty() {
             return Ok(());
         }
+        println!("Saving {} records", self.buf.len());
 
         let mut sql = String::from("INSERT INTO keylogs (time_sec, time_usec, key_code, created_at) VALUES ");
         let value_placeholder = "(?, ?, ?, ?)";
