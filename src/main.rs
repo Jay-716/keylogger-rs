@@ -132,7 +132,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut input = Libinput::new_with_udev(Interface);
         input.udev_assign_seat("seat0").unwrap();
 
-        while poll(&mut [PollFd::new(input.as_fd(), PollFlags::POLLIN)], PollTimeout::NONE).is_ok() {
+        while *running2.lock().unwrap() {
+            if poll(
+                &mut [PollFd::new(input.as_fd(), PollFlags::POLLIN)],
+                PollTimeout::try_from(Duration::from_millis(500)).unwrap()
+            ).is_err() {
+                continue;
+            }
             input.dispatch().unwrap();
             for event in &mut input {
                 if let Event::Keyboard(event) = event {
@@ -143,13 +149,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                             key_code: event.key(),
                             created_at: now(),
                         };
-                        key_tx.send(key_event).unwrap();
+                        if let Err(err) = key_tx.send(key_event) {
+                            println!("Error sending key event: {err}");
+                        }
                     }
                 }
-            }
-
-            if !*running2.lock().unwrap() {
-                break;
             }
         }
     });
@@ -163,9 +167,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut key_saver = KeySaver::new(file);
         let mut last_save = 0;
 
-        loop {
-            let result = key_rx.recv_timeout(Duration::from_millis(500));
-            if let Ok(event) = result {
+        while *running3.lock().unwrap() {
+            if let Ok(event) = key_rx.recv_timeout(Duration::from_millis(500)) {
                 key_saver.add(event);
             }
             let now = now();
@@ -173,12 +176,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let _ = key_saver.save();
                 last_save = now;
             }
-
-            if !*running3.lock().unwrap() {
-                let _ = key_saver.save();
-                break;
-            }
         }
+
+        let _ = key_saver.save();
     });
 
     signal_handle.join().unwrap();
